@@ -132,6 +132,8 @@
 #include <PID_v1.h>
 #include "WiFi.h" // ESP32 WiFi include
 #include "wifiConfig.h"
+#include <ESPAsyncWebServer.h>
+
 
 // ***** TYPE DEFINITIONS *****
 typedef enum REFLOW_STATE
