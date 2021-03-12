@@ -130,6 +130,8 @@
 #include <Adafruit_SSD1306.h>  
 #include "Adafruit_MAX31855.h"
 #include <PID_v1.h>
+#include "WiFi.h" // ESP32 WiFi include
+#include "wifiConfig.h"
 
 // ***** TYPE DEFINITIONS *****
 typedef enum REFLOW_STATE
@@ -172,7 +174,7 @@ typedef enum REFLOW_PROFILE
 
 // ***** CONSTANTS *****
 // ***** GENERAL *****
-#define VERSION 2 // Replace with 1 or 2
+// #define VERSION 2 // Replace with 1 or 2
 
 // ***** GENERAL PROFILE CONSTANTS *****
 #define PROFILE_TYPE_ADDRESS 0
@@ -180,7 +182,7 @@ typedef enum REFLOW_PROFILE
 #define TEMPERATURE_SOAK_MIN 150
 #define TEMPERATURE_COOL_MIN 100
 #define SENSOR_SAMPLING_TIME 1000
-#define SOAK_TEMPERATURE_STEP 5
+#define SOAK_TEMPERATURE_STEP 3.5//5
 
 // ***** LEAD FREE PROFILE CONSTANTS *****
 #define TEMPERATURE_SOAK_MAX_LF 200
@@ -188,8 +190,8 @@ typedef enum REFLOW_PROFILE
 #define SOAK_MICRO_PERIOD_LF 9000
 
 // ***** LEADED PROFILE CONSTANTS *****
-#define TEMPERATURE_SOAK_MAX_PB 180
-#define TEMPERATURE_REFLOW_MAX_PB 224
+#define TEMPERATURE_SOAK_MAX_PB 183//180
+#define TEMPERATURE_REFLOW_MAX_PB 224//224
 #define SOAK_MICRO_PERIOD_PB 10000
 
 // ***** SWITCH SPECIFIC CONSTANTS *****
@@ -296,6 +298,7 @@ Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 #define THERMO_CLK 5
 Adafruit_MAX31855 thermocouple(THERMO_CLK, THERMO_CS, THERMO_DO);
 
+
 void tone(byte pin, int freq) {
   ledcSetup(0, 2000, 8); // setup beeper
   ledcAttachPin(pin, 0); // attach beeper
@@ -311,6 +314,28 @@ void beep(byte numOfBeeps,uint16_t duration)
     tone(buzzerPin ,0);
     delay(duration/2);
   }
+}
+
+void ConnectToWiFi()
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(SSID, WiFiPassword);
+  Serial.print("Connecting to "); Serial.println(SSID);
+ 
+  uint8_t i = 0;
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print('.');
+    delay(500);
+ 
+    if ((++i % 16) == 0)
+    {
+      Serial.println(F(" still trying to connect"));
+    }
+  }
+ 
+  Serial.print(F("Connected. My IP address is: "));
+  Serial.println(WiFi.localIP());
 }
 
 void setup()
@@ -351,12 +376,12 @@ void setup()
   // Initialize thermocouple interface
   // thermocouple.begin();
   // thermocouple.setThermocoupleType(MAX31856_TCTYPE_K);
-  Serial.println("Initializing sensor...");
+  //Serial.println("Initializing sensor...");
   if (!thermocouple.begin()) {
-    Serial.println("ERROR.");
+    Serial.println("Initializing sensor...ERROR.");
     while (1) delay(10);
   }
-  Serial.println("Initializing sensor DONE !!");
+  //Serial.println("Initializing sensor DONE !!");
   // Start-up splash
   //digitalWrite(buzzerPin, HIGH);
   //tone(buzzerPin, 1568, 200); // Alert the user to open the door!
@@ -368,18 +393,19 @@ void setup()
   //digitalWrite(buzzerPin, LOW);
   delay(2000);
 
-  oled.clearDisplay();
   oled.setTextSize(1);
   oled.setTextColor(WHITE);
-  oled.setCursor(0, 0);
-  oled.println(F("     Tiny Reflow"));
-  oled.println(F("     Controller"));
-  oled.println();
-  oled.println(F("       v2.00"));
-  oled.println();
-  oled.println(F("      04-03-19"));
-  oled.display();
-  delay(3000);
+  // oled.clearDisplay();
+  
+  // oled.setCursor(0, 0);
+  // oled.println(F("     Tiny Reflow"));
+  // oled.println(F("     Controller"));
+  // oled.println();
+  // oled.println(F("       v2.00"));
+  // oled.println();
+  // oled.println(F("      04-03-19"));
+  // oled.display();
+  // delay(3000);
   oled.clearDisplay();
 
   
@@ -426,13 +452,18 @@ void loop()
       // Increase seconds timer for reflow curve plot
       timerSeconds++;
       // Send temperature and time stamp to serial
-      Serial.print(timerSeconds);
-      Serial.print(F(","));
-      Serial.print(setpoint);
-      Serial.print(F(","));
+      // Serial.print(timerSeconds);
+      // Serial.print(F(","));
+      // Serial.print(setpoint);
+      // Serial.print(F(","));
+      //Serial.print(input);
+      // Serial.print(F(","));
+      // Serial.println(output);
+      Serial.print(0);
+      Serial.print("\t");
       Serial.print(input);
-      Serial.print(F(","));
-      Serial.println(output);
+      Serial.print("\t");
+      Serial.println(270);
     }
     else
     {
@@ -534,7 +565,7 @@ void loop()
         if (switchStatus == SWITCH_1)
         {
           // Send header for CSV file
-          Serial.println(F("Time,Setpoint,Input,Output"));
+          //Serial.println(F("Time,Setpoint,Input,Output"));
           // Intialize seconds timer for serial debug information
           timerSeconds = 0;
           
