@@ -141,6 +141,8 @@ typedef enum REFLOW_STATE
   REFLOW_STATE_IDLE,
   REFLOW_STATE_PREHEAT,
   REFLOW_STATE_SOAK,
+  REFLOW_STATE_SOAK_DELAY,
+  
   REFLOW_STATE_REFLOW,
   REFLOW_STATE_COOL,
   REFLOW_STATE_COMPLETE,
@@ -184,7 +186,7 @@ typedef enum REFLOW_PROFILE
 #define TEMPERATURE_SOAK_MIN 150
 #define TEMPERATURE_COOL_MIN 100
 #define SENSOR_SAMPLING_TIME 1000
-#define SOAK_TEMPERATURE_STEP 3.5//5
+#define SOAK_TEMPERATURE_STEP 5//5
 
 // ***** LEAD FREE PROFILE CONSTANTS *****
 #define TEMPERATURE_SOAK_MAX_LF 200
@@ -227,6 +229,7 @@ const char* lcdMessagesReflowStatus[] = {
   "Ready",
   "Pre",
   "Soak",
+  "Soak-D",
   "Reflow",
   "Cool",
   "Done!",
@@ -637,14 +640,29 @@ void loop()
         setpoint += SOAK_TEMPERATURE_STEP;
         if (setpoint > soakTemperatureMax)
         {
-          // Set agressive PID parameters for reflow ramp
+          // // Set agressive PID parameters for reflow ramp
+          // reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
+          // // Ramp up to first section of soaking temperature
+          // setpoint = reflowTemperatureMax;
+          // Proceed to reflowing state
+          setpoint = soakTemperatureMax;
+          timerSoak =  millis() + 10000;
+          reflowState = REFLOW_STATE_SOAK_DELAY; //REFLOW_STATE_REFLOW;
+          beep(3,50);
+        }
+        
+      }
+      break;
+
+    case REFLOW_STATE_SOAK_DELAY:
+      if (timerSoak < millis())
+      {
+        // Set agressive PID parameters for reflow ramp
           reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
           // Ramp up to first section of soaking temperature
           setpoint = reflowTemperatureMax;
-          // Proceed to reflowing state
-          reflowState = REFLOW_STATE_REFLOW;
-          beep(3,50);
-        }
+           reflowState = REFLOW_STATE_REFLOW;
+          beep(4,50);
       }
       break;
 
