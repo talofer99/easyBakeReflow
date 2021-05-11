@@ -133,6 +133,14 @@
 #include "WiFi.h" // ESP32 WiFi include
 #include "wifiConfig.h"
 #include <ESPAsyncWebServer.h>
+#include <ESPmDNS.h>
+
+
+// http server 
+AsyncWebServer server(80);
+AsyncWebSocket webSocket("/ws");
+const char* host = "reflowoven";
+
 
 
 // ***** TYPE DEFINITIONS *****
@@ -323,6 +331,9 @@ void beep(byte numOfBeeps,uint16_t duration)
 
 void ConnectToWiFi()
 {
+  oled.clearDisplay();
+  oled.println(F("START WIFI"));
+  oled.display();
   WiFi.mode(WIFI_STA);
   WiFi.begin(SSID, WiFiPassword);
   Serial.print("Connecting to "); Serial.println(SSID);
@@ -336,17 +347,45 @@ void ConnectToWiFi()
     if ((++i % 16) == 0)
     {
       Serial.println(F(" still trying to connect"));
+      oled.println(F("STILL TRYING!!"));
+      oled.display();
     }
   }
  
   Serial.print(F("Connected. My IP address is: "));
   Serial.println(WiFi.localIP());
+  oled.println(F("IP:"));
+  oled.println(WiFi.localIP());
+  oled.display();
+  //delay(5000);
 }
 
 void setup()
 {
   // Serial communication at 115200 bps
   Serial.begin(115200);
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.display();
+  delay(1000); // freaking logo on the screen
+
+  // begin oled 
+  
+  oled.setTextSize(1);
+  oled.setTextColor(WHITE);
+  // Start wifi 
+  ConnectToWiFi();
+
+
+  // MDNS
+  if (MDNS.begin(host)) {
+    MDNS.addService("http", "tcp", 80);
+    Serial.println(F("MDNS responder started"));
+    Serial.print(F("You can now connect to http://"));
+    Serial.print(host);
+    Serial.println(F(".local"));
+  }
+  MDNS.addService("http", "tcp", 80);
+
 
   // Check current selected reflow profile
   reflowProfile = REFLOW_PROFILE_LEADED;
@@ -383,6 +422,9 @@ void setup()
   // thermocouple.setThermocoupleType(MAX31856_TCTYPE_K);
   //Serial.println("Initializing sensor...");
   if (!thermocouple.begin()) {
+    oled.println(F("SENSOR ERROR!!"));
+    oled.display();
+
     Serial.println("Initializing sensor...ERROR.");
     while (1) delay(10);
   }
@@ -390,27 +432,11 @@ void setup()
   // Start-up splash
   //digitalWrite(buzzerPin, HIGH);
   //tone(buzzerPin, 1568, 200); // Alert the user to open the door!
-  beep(3,50);
-
-  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  oled.display();
-
-  //digitalWrite(buzzerPin, LOW);
-  delay(2000);
-
-  oled.setTextSize(1);
-  oled.setTextColor(WHITE);
-  // oled.clearDisplay();
   
-  // oled.setCursor(0, 0);
-  // oled.println(F("     Tiny Reflow"));
-  // oled.println(F("     Controller"));
-  // oled.println();
-  // oled.println(F("       v2.00"));
-  // oled.println();
-  // oled.println(F("      04-03-19"));
-  // oled.display();
-  // delay(3000);
+  // beep for ui 
+  //beep(3,50);
+
+  // clear led
   oled.clearDisplay();
 
   
