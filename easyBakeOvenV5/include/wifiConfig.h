@@ -1,3 +1,3 @@
 
-const char *SSID = "Your SSID";
-const char *WiFiPassword = "Your Password";
+const char *SSID = "YG10";
+const char *WiFiPassword = "ABAeven2";

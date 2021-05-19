@@ -134,12 +134,17 @@
 #include "wifiConfig.h"
 #include <ESPAsyncWebServer.h>
 #include <ESPmDNS.h>
+#include "webPage.h"
+
+void webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);
 
 
 // http server 
 AsyncWebServer server(80);
 AsyncWebSocket webSocket("/ws");
 const char* host = "reflowoven";
+
+unsigned long lastSocketUpdate = 0;
 
 
 
@@ -384,23 +389,22 @@ void setup()
     Serial.print(host);
     Serial.println(F(".local"));
   }
-  MDNS.addService("http", "tcp", 80);
+  // MDNS.addService("http", "tcp", 80);
+
+   // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/html", index_html);
+  });
+
+  webSocket.onEvent(webSocketEvent);
+
+  server.addHandler(&webSocket);
+
+  server.begin();
 
 
   // Check current selected reflow profile
   reflowProfile = REFLOW_PROFILE_LEADED;
-  // unsigned char value = EEPROM.read(PROFILE_TYPE_ADDRESS);
-  // if ((value == 0) || (value == 1))
-  // {
-  //   // Valid reflow profile value
-  //   reflowProfile = value;
-  // }
-  // else
-  // {
-  //   // Default to lead-free profile
-  //   EEPROM.write(PROFILE_TYPE_ADDRESS, 0);
-  //   reflowProfile = REFLOW_PROFILE_LEADFREE;
-  // }
 
   // SSR pin initialization to ensure reflow oven is off
   digitalWrite(ssrPin, LOW);
@@ -502,6 +506,10 @@ void loop()
       digitalWrite(ledPin, LOW);
     }
   }
+  if (millis()- lastSocketUpdate > 1000){
+    webSocket.textAll(String(input));
+    lastSocketUpdate = millis();
+  }
 
   if (millis() > updateLcd)
   {
@@ -579,6 +587,7 @@ void loop()
     
     // Update screen
     oled.display();
+    
   }
 
   // Reflow oven controller state machine
@@ -871,4 +880,44 @@ switch_t readSwitch(void)
   if (digitalRead(switchLfPbPin) == LOW) return SWITCH_2;
 
   return SWITCH_NONE;
+}
+
+
+// **********************
+// WEB SOCKER EVENTS
+// **********************
+void webSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len) {
+
+  switch (type) {
+    case WS_EVT_DISCONNECT:
+      Serial.printf("ws[%s][%u] disconnect\n", server->url(), client->id());
+
+      break;
+    case WS_EVT_CONNECT: {
+        AwsFrameInfo * info = (AwsFrameInfo*)arg;
+        Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+        client->ping();
+      } //end case
+      break;
+
+    case WS_EVT_DATA:
+      AwsFrameInfo * info = (AwsFrameInfo*)arg;
+      String msg = "";
+      if (info->final && info->index == 0 && info->len == len) {
+        //the whole message is in a single frame and we got all of it's data
+        Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT) ? "text" : "binary", info->len);
+
+        if (info->opcode == WS_TEXT) {
+          for (size_t i = 0; i < info->len; i++) {
+            msg += (char) data[i];
+          }
+        }
+        Serial.printf("%s\n", msg.c_str());
+
+        if (info->opcode == WS_TEXT) {
+          }   
+      } //end if 
+      break;
+  } //end switch
+
 }
