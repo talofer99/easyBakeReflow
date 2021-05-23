@@ -1,15 +1,17 @@
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
-  <title>ESP Web Server</title>
+  <title>ESP Reflow Oven</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
 
 </head>
 <body>
-  <h2>ESP Web Server</h2>
+  <div id="stateDiv"></div>
+  <!--<h2>ESP Web Server</h2>-->
+
   <canvas id="myChart"></canvas>
-  <button id="addData">add</button>
+  <!--<button id="addData">add</button> -->
   <script>
 
 
@@ -26,9 +28,13 @@ connection.onerror = function (error) {    console.log('WebSocket Error ', error
 connection.onmessage = function (e){
 	console.log(e.data);
 	//parse json
-    addToGraph(e.data)
-	//jsonObj = JSON.parse(e.data);
-	//console.log('Server: ', jsonObj);
+    jsonObj = JSON.parse(e.data);
+	console.log('Server: ', jsonObj);
+	if (jsonObj.type == 'temperature')
+		addToGraph(jsonObj.temperature);
+	else if (jsonObj.type == 'state')
+		document.getElementById('stateDiv').innerHTML = jsonObj.stateText;
+	
 	
 };
 

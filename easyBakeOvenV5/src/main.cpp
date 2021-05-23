@@ -365,6 +365,27 @@ void ConnectToWiFi()
   //delay(5000);
 }
 
+
+void sendReflowStateToSockets()
+{
+  String jsonResponse = "{\"stateText\":\"";
+  jsonResponse.concat(lcdMessagesReflowStatus[reflowState]);
+  jsonResponse.concat("\",\"type\":\"state\"");
+  jsonResponse.concat(",\"state\":");
+  jsonResponse.concat(String(reflowState));
+  jsonResponse.concat("}");
+  webSocket.textAll(jsonResponse); 
+}
+
+void setReflowState(reflowState_t newState)
+{
+  reflowState = newState;
+  sendReflowStateToSockets();
+}
+
+
+
+
 void setup()
 {
   // Serial communication at 115200 bps
@@ -507,7 +528,12 @@ void loop()
     }
   }
   if (millis()- lastSocketUpdate > 1000){
-    webSocket.textAll(String(input));
+    String jsonResponse = "{\"temperature\":";
+    jsonResponse.concat(String(input));
+    jsonResponse.concat(",\"type\":\"temperature\"");
+    jsonResponse.concat("}");
+    webSocket.textAll(jsonResponse);
+    //webSocket.textAll(String(input));
     lastSocketUpdate = millis();
   }
 
@@ -597,7 +623,8 @@ void loop()
       // If oven temperature is still above room temperature
       if (input >= TEMPERATURE_ROOM)
       {
-        reflowState = REFLOW_STATE_TOO_HOT;
+        setReflowState(REFLOW_STATE_TOO_HOT);
+        //reflowState = REFLOW_STATE_TOO_HOT;
       }
       else
       {
@@ -644,7 +671,8 @@ void loop()
           // Turn the PID on
           reflowOvenPID.SetMode(AUTOMATIC);
           // Proceed to preheat stage
-          reflowState = REFLOW_STATE_PREHEAT;
+          setReflowState(REFLOW_STATE_PREHEAT);
+          //reflowState = REFLOW_STATE_PREHEAT;
         }
       }
       break;
@@ -661,7 +689,8 @@ void loop()
         // Ramp up to first section of soaking temperature
         setpoint = TEMPERATURE_SOAK_MIN + SOAK_TEMPERATURE_STEP;
         // Proceed to soaking state
-        reflowState = REFLOW_STATE_SOAK;
+        setReflowState(REFLOW_STATE_SOAK);
+        //reflowState = REFLOW_STATE_SOAK;
         beep(2,50);
       }
       break;
@@ -682,7 +711,8 @@ void loop()
           // Proceed to reflowing state
           setpoint = soakTemperatureMax;
           timerSoak =  millis() + 10000;
-          reflowState = REFLOW_STATE_SOAK_DELAY; //REFLOW_STATE_REFLOW;
+          setReflowState(REFLOW_STATE_SOAK_DELAY);
+          //reflowState = REFLOW_STATE_SOAK_DELAY; //REFLOW_STATE_REFLOW;
           beep(3,50);
         }
         
@@ -696,7 +726,8 @@ void loop()
           reflowOvenPID.SetTunings(PID_KP_REFLOW, PID_KI_REFLOW, PID_KD_REFLOW);
           // Ramp up to first section of soaking temperature
           setpoint = reflowTemperatureMax;
-           reflowState = REFLOW_STATE_REFLOW;
+          setReflowState(REFLOW_STATE_REFLOW);
+          //reflowState = REFLOW_STATE_REFLOW;
           beep(4,50);
       }
       break;
@@ -711,7 +742,8 @@ void loop()
         // Ramp down to minimum cooling temperature
         setpoint = TEMPERATURE_COOL_MIN;
         // Proceed to cooling state
-        reflowState = REFLOW_STATE_COOL;
+        setReflowState(REFLOW_STATE_COOL);
+        //reflowState = REFLOW_STATE_COOL;
         beep(4,500);
       }
       break;
@@ -729,7 +761,8 @@ void loop()
         // Turn off reflow process
         reflowStatus = REFLOW_STATUS_OFF;
         // Proceed to reflow Completion state
-        reflowState = REFLOW_STATE_COMPLETE;
+        setReflowState(REFLOW_STATE_COMPLETE);
+        //reflowState = REFLOW_STATE_COMPLETE;
       }
       break;
 
@@ -737,7 +770,8 @@ void loop()
       if (millis() > buzzerPeriod)
       {
         // Reflow process ended
-        reflowState = REFLOW_STATE_IDLE;
+        setReflowState(REFLOW_STATE_IDLE);
+        //reflowState = REFLOW_STATE_IDLE;
       }
       break;
 
@@ -746,14 +780,16 @@ void loop()
       if (input < TEMPERATURE_ROOM)
       {
         // Ready to reflow
-        reflowState = REFLOW_STATE_IDLE;
+        setReflowState(REFLOW_STATE_IDLE);
+        //reflowState = REFLOW_STATE_IDLE;
       }
       break;
 
     case REFLOW_STATE_ERROR:
       Serial.println("IN REFLOW_STATE_ERROR !!!!");
       // Clear to perform reflow process
-      reflowState = REFLOW_STATE_IDLE;
+      setReflowState(REFLOW_STATE_IDLE);
+      //reflowState = REFLOW_STATE_IDLE;
 
       break;
   }
